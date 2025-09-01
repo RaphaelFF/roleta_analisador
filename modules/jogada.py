@@ -1,0 +1,48 @@
+# A classe que define o comportamento de uma jogada
+class Jogada:
+    def __init__(self, nome, numeros_alvo, numeros_especiais):
+        self.nome = nome
+        self.numeros_alvo = set(numeros_alvo)
+        self.numeros_especiais = set(numeros_especiais)
+
+    def verificar(self, numero):
+        """Verifica se o número pertence ao conjunto de números-alvo da jogada."""
+        return 'certo' if numero in self.numeros_alvo else 'errado'
+
+    def eh_especial(self, numero):
+        """Verifica se o número é um dos números especiais da jogada."""
+        return numero in self.numeros_especiais
+
+# Dicionário com as instâncias de cada jogada
+JOGADAS = {
+    "Vizinho 34": Jogada(
+        "Vizinho 34",
+        {0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10},
+        {36, 34, 30, 25, 27, 19, 21, 17}
+    ),
+    "Vizinho 22": Jogada(
+        "Vizinho 22",
+        {0, 26, 3, 35, 12, 28, 7, 29, 18, 22, 9, 31, 14, 20, 1, 33, 16, 24, 5},
+        {33, 28, 29, 22, 20, 18, 12, 14}
+    ),
+    "Vizinho 23": Jogada(
+        "Vizinho 23",
+        {31, 14, 20, 1, 33, 16, 24, 5, 10, 23, 8, 30, 11, 36, 13, 27, 6, 34, 17},
+        {33, 30, 16, 13, 10, 11, 8, 5}
+    ),
+    "Vizinho 0": Jogada(
+        "Vizinho 0",
+        {34, 17, 25, 2, 21, 4, 19, 15, 32, 0, 26, 3, 35, 12, 28, 7, 29, 18, 22},
+        {28, 29, 19, 15, 12, 7, 4, 2}
+    ),
+    "Rua do Meio": Jogada(
+        "Rua do Meio",
+        {4, 5, 6, 7, 8, 9, 16, 17, 18, 19, 20, 21, 28, 29, 30, 31, 32, 33},
+        {} # Não há números especiais para essa jogada
+    ),
+    "Rua de Fora": Jogada(
+        "Rua de Fora",
+        {1, 2, 3, 10, 11, 12, 13, 14, 15, 22, 23, 24, 25, 26, 27, 34, 35, 36},
+        {} # Não há números especiais para essa jogada
+    )
+}
