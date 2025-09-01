@@ -2,8 +2,17 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.remote.webelement import WebElement
-import time
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+# --- Credenciais de login ---
+USUARIO = os.getenv('USUARIO')
+SENHA = os.getenv('SENHA')
+URL_INICIAL = os.getenv('URL_INICIAL')
+URL_JOGO = os.getenv('URL_JOGO')
+
 
 # --- Classe para esperar a mudança de texto ---
 class text_has_changed:
@@ -19,34 +28,70 @@ class text_has_changed:
         except:
             return False
 
-def salvar_numeros_em_arquivo(numeros):
-    """Salva a lista de números em um arquivo de texto."""
+def salvar_numero_em_arquivo(numero):
+    """Salva um único número no arquivo, em modo de adição."""
     with open('resultados.txt', 'a') as f:
-        # Junta a lista de números em uma única string separada por vírgulas
-        f.write(f"{numeros}\n")
+        f.write(f"{numero}\n")
 
-# Inicializa o driver do navegador
-driver = webdriver.Chrome()
-driver.get('https://app.stakehub.com.br/game/')
+def fazer_login_e_acessar_jogo(driver, url_inicial, url_jogo):
+    """Navega até a página de login, realiza o login e acessa a roleta."""
+    driver.get(url_inicial)
 
-# Espera inicial para o contêiner do histórico estar visível
-try:
-    WebDriverWait(driver, 60).until(
-        EC.presence_of_element_located((By.CLASS_NAME, 'grid.gap-1.h-full'))
-    )
-    print("Página e elementos principais carregados com sucesso.")
-except Exception as e:
-    print(f"Erro ao carregar a página principal: {e}")
-    driver.quit()
-    exit()
+    try:
+        # 1. Clicar no botão "Avançar" para fechar o pop-up, se existir
+        try:
+            botao_avancar = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Avançar')]"))
+            )
+            botao_avancar.click()
+            print("Pop-up 'Avançar' fechado com sucesso.")
+        except:
+            print("Pop-up 'Avançar' não encontrado ou já fechado.")
+        
+        # 2. Preencher e-mail e senha
+        campo_email = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, 'email'))
+        )
+        campo_email.send_keys(USUARIO)
+        
+        campo_senha = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, 'password'))
+        )
+        campo_senha.send_keys(SENHA)
 
-# Variável para armazenar a lista dos 10 últimos números
-historico_recente = []
+        # 3. Clicar no botão "Entrar"
+        botao_entrar = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[type="submit"]'))
+        )
+        botao_entrar.click()
+        print("Login realizado com sucesso.")
 
-def get_historico_roleta():
+        # --- CORREÇÃO APLICADA AQUI: By.CLASS_NAME foi trocado por By.CSS_SELECTOR ---
+        # 4. Esperar que a div de container de jogos carregue
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3.xl\\:grid-cols-4.gap-3.sm\\:gap-4'))
+        )
+        print("Container de jogos carregado. Procurando o link da Roleta Brasileira...")
+        
+        # 5. Encontrar e clicar no link da roleta usando o atributo href
+        link_roleta = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, f"//a[@href='{url_jogo}']"))
+        )
+        link_roleta.click()
+        print("Navegação para a Roleta Brasileira realizada com sucesso.")
+        
+        return True
+    
+    except Exception as e:
+        print(f"Erro durante o login ou navegação: {e}")
+        return False
+
+def get_historico_roleta(driver):
     """Captura e retorna a lista completa de números do histórico da roleta."""
     try:
-        historico_container = driver.find_element(By.CLASS_NAME, 'grid.gap-1.h-full')
+        historico_container = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'grid.gap-1.h-full'))
+        )
         elementos_numeros = historico_container.find_elements(
             By.CSS_SELECTOR, 'div.flex.items-center.justify-center.font-bold'
         )
@@ -56,35 +101,48 @@ def get_historico_roleta():
         print(f"Erro ao capturar o histórico: {e}")
         return []
 
-# Loop principal para monitoramento
+# --- Lógica Principal ---
+driver = webdriver.Chrome()
+
+if not fazer_login_e_acessar_jogo(driver, URL_INICIAL, URL_JOGO):
+    driver.quit()
+    exit()
+
+# Aguarda a página do jogo carregar completamente
+WebDriverWait(driver, 60).until(
+    EC.presence_of_element_located((By.CLASS_NAME, 'grid.gap-1.h-full'))
+)
+print("Página do jogo carregada com sucesso. Iniciando monitoramento.")
+
+historico_recente = []
+
 while True:
-    historico_completo = get_historico_roleta()
+    historico_completo = get_historico_roleta(driver)
     
     if historico_completo:
         initial_text = historico_completo[0]
         
-        # Salva o histórico inicial no arquivo
+        # Salva o número mais recente do histórico
         if historico_recente != historico_completo[:10]:
             historico_recente = historico_completo[:10]
-            print("✅ HISTÓRICO INICIAL DETECTADO:")
+            print("✅ HISTÓRICO ATUALIZADO:")
             print(historico_recente)
-            salvar_numeros_em_arquivo(historico_recente[0])
+            salvar_numero_em_arquivo(historico_recente[0])
 
         print("\n🔁 Aguardando novo resultado...")
         
         try:
-            first_number_element = WebDriverWait(driver, 60).until(
+            WebDriverWait(driver, 60).until(
                 text_has_changed((By.CSS_SELECTOR, 'div.flex.items-center.justify-center.font-bold'), initial_text)
             )
             
-            # Se a espera for bem-sucedida, um novo número apareceu
-            historico_completo = get_historico_roleta()
+            historico_completo = get_historico_roleta(driver)
             
             historico_recente = historico_completo[:10]
             
             print("✅ NOVO NÚMERO DETECTADO:")
             print(historico_recente)
-            salvar_numeros_em_arquivo(historico_recente[0])
+            salvar_numero_em_arquivo(historico_recente[0])
 
         except Exception as e:
             print(f"Tempo de espera esgotado ou erro: {e}")
