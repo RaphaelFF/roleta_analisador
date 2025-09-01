@@ -28,17 +28,20 @@ class text_has_changed:
         except:
             return False
 
-def salvar_numero_em_arquivo(numero):
-    """Salva um único número no arquivo, em modo de adição."""
-    with open('resultados.txt', 'a') as f:
-        f.write(f"{numero}\n")
+def salvar_historico_em_arquivo(historico_completo):
+    """Sobrescreve o arquivo com os 100 últimos números."""
+    with open('resultados.txt', 'w') as f:
+        # Pega os 100 números mais recentes
+        numeros_recentes = historico_completo[:200][::-1]
+        # Salva cada número em uma nova linha
+        for numero in numeros_recentes:
+            f.write(f"{numero}\n")
 
 def fazer_login_e_acessar_jogo(driver, url_inicial, url_jogo):
     """Navega até a página de login, realiza o login e acessa a roleta."""
     driver.get(url_inicial)
 
     try:
-        # 1. Clicar no botão "Avançar" para fechar o pop-up, se existir
         try:
             botao_avancar = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Avançar')]"))
@@ -48,7 +51,6 @@ def fazer_login_e_acessar_jogo(driver, url_inicial, url_jogo):
         except:
             print("Pop-up 'Avançar' não encontrado ou já fechado.")
         
-        # 2. Preencher e-mail e senha
         campo_email = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, 'email'))
         )
@@ -59,21 +61,17 @@ def fazer_login_e_acessar_jogo(driver, url_inicial, url_jogo):
         )
         campo_senha.send_keys(SENHA)
 
-        # 3. Clicar no botão "Entrar"
         botao_entrar = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[type="submit"]'))
         )
         botao_entrar.click()
         print("Login realizado com sucesso.")
 
-        # --- CORREÇÃO APLICADA AQUI: By.CLASS_NAME foi trocado por By.CSS_SELECTOR ---
-        # 4. Esperar que a div de container de jogos carregue
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, '.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3.xl\\:grid-cols-4.gap-3.sm\\:gap-4'))
         )
         print("Container de jogos carregado. Procurando o link da Roleta Brasileira...")
         
-        # 5. Encontrar e clicar no link da roleta usando o atributo href
         link_roleta = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, f"//a[@href='{url_jogo}']"))
         )
@@ -122,12 +120,12 @@ while True:
     if historico_completo:
         initial_text = historico_completo[0]
         
-        # Salva o número mais recente do histórico
-        if historico_recente != historico_completo[:10]:
-            historico_recente = historico_completo[:10]
+        # Salva o histórico inicial no arquivo
+        if historico_recente != historico_completo[:200]:
+            historico_recente = historico_completo[:200]
             print("✅ HISTÓRICO ATUALIZADO:")
             print(historico_recente)
-            salvar_numero_em_arquivo(historico_recente[0])
+            salvar_historico_em_arquivo(historico_recente)
 
         print("\n🔁 Aguardando novo resultado...")
         
@@ -138,11 +136,11 @@ while True:
             
             historico_completo = get_historico_roleta(driver)
             
-            historico_recente = historico_completo[:10]
+            historico_recente = historico_completo[:200]
             
             print("✅ NOVO NÚMERO DETECTADO:")
             print(historico_recente)
-            salvar_numero_em_arquivo(historico_recente[0])
+            salvar_historico_em_arquivo(historico_recente)
 
         except Exception as e:
             print(f"Tempo de espera esgotado ou erro: {e}")

@@ -2,43 +2,70 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from modules.jogada import JOGADAS
 from modules.cores import aplicar_cor_especial, formatar_numero
+from modules.analises import analisar_regioes_quentes
+import os
 
 st.set_page_config(layout="wide")
 
 if 'numeros_sorteados' not in st.session_state:
     st.session_state.numeros_sorteados = []
-if 'linhas_processadas' not in st.session_state:
-    st.session_state.linhas_processadas = 0
+if 'ultimas_linhas_processadas' not in st.session_state:
+    st.session_state.ultimas_linhas_processadas = []
+if 'acertos' not in st.session_state:
+    st.session_state.acertos = 0
+if 'erros' not in st.session_state:
+    st.session_state.erros = 0
 
-# A cada 2 segundos, a função adiciona_ultimos_numeros será executada
-st_autorefresh(interval=2000, key="auto_refresh")
+# A cada 5 segundos, a função atualizar_numeros será executada
+st_autorefresh(interval=5000, key="auto_refresh")
 
-def adicionar_ultimos_numeros():
+def atualizar_numeros():
+    """Lê o arquivo de resultados e atualiza a lista de números no estado da sessão."""
     try:
         with open('resultados.txt', 'r') as f:
             linhas = f.readlines()
-            total_linhas = len(linhas)
             
-            # Compara o número total de linhas do arquivo com as que já processamos
-            if total_linhas > st.session_state.linhas_processadas:
-                # Itera apenas sobre as novas linhas que ainda não foram processadas
-                for linha in linhas[st.session_state.linhas_processadas:]:
-                    linha_limpa = linha.strip()
-                    if linha_limpa:
-                        try:
-                            novo_numero = int(linha_limpa)
-                            st.session_state.numeros_sorteados.append(novo_numero)
-                        except ValueError:
-                            # Ignora linhas que não são números válidos
-                            pass
-                
-                # Atualiza a contagem de linhas processadas
-                st.session_state.linhas_processadas = total_linhas
+            if linhas != st.session_state.ultimas_linhas_processadas:
+                numeros = [int(linha.strip()) for linha in linhas if linha.strip().isdigit()]
+                st.session_state.numeros_sorteados = numeros
+                st.session_state.ultimas_linhas_processadas = linhas
                 st.rerun()
                 
     except FileNotFoundError:
         st.warning("Arquivo 'resultados.txt' não encontrado. Certifique-se de que o web scraper está rodando.")
         pass
+
+def calcular_metricas():
+    """Calcula e atualiza as métricas de acertos e erros com base na lógica de filtragem atual."""
+    acertos = 0
+    erros = 0
+    
+    if st.session_state.numeros_sorteados:
+        jogada_selecionada_obj = JOGADAS[st.session_state.jogada_selecionada]
+        
+        numeros_analise = st.session_state.numeros_sorteados[::-1]
+        
+        for i, numero in enumerate(numeros_analise):
+            indice_original = len(st.session_state.numeros_sorteados) - i - 1
+            status = jogada_selecionada_obj.verificar(numero)
+            
+            cor_especial = aplicar_cor_especial(
+                numero, status, jogada_selecionada_obj.verificar,
+                st.session_state.numeros_sorteados, indice_original,
+                st.session_state.sequencias_consecutivas,
+                st.session_state.inverter_logica,
+                st.session_state.inverter_logica_sequencia
+            )
+            
+            if cor_especial:
+                cor, _ = cor_especial
+                if cor == 'blue':
+                    acertos += 1
+                elif cor == 'orange':
+                    erros += 1
+
+    st.session_state.acertos = acertos
+    st.session_state.erros = erros
 
 # CSS para controlar a responsividade
 _RESPONSIVE_CSS = """
@@ -59,32 +86,41 @@ _RESPONSIVE_CSS = """
 
 def render_numero(col, numero, indice_exibicao):
     indice_original = len(st.session_state.numeros_sorteados) - indice_exibicao - 1
-    jogada_selecionada_obj = JOGADAS[st.session_state.jogada_selecionada]
-    status = jogada_selecionada_obj.verificar(numero)
     
-    cor_especial = aplicar_cor_especial(
-        numero, status, jogada_selecionada_obj.verificar,
-        st.session_state.numeros_sorteados, indice_original,
-        st.session_state.sequencias_consecutivas,
-        st.session_state.inverter_logica,
-        st.session_state.inverter_logica_sequencia
-    )
-    
-    if cor_especial:
-        cor, num = cor_especial
-        col.markdown(formatar_numero(num, cor), unsafe_allow_html=True)
-    else:
-        col.markdown(formatar_numero(numero, status), unsafe_allow_html=True)
+    if st.session_state.jogada_selecionada in JOGADAS and indice_original >= 0:
+        jogada_selecionada_obj = JOGADAS[st.session_state.jogada_selecionada]
+        status = jogada_selecionada_obj.verificar(numero)
+        
+        cor = None
+        
+        cor_especial = aplicar_cor_especial(
+            numero, status, jogada_selecionada_obj.verificar,
+            st.session_state.numeros_sorteados, indice_original,
+            st.session_state.sequencias_consecutivas,
+            st.session_state.inverter_logica,
+            st.session_state.inverter_logica_sequencia
+        )
+        
+        if cor_especial:
+            cor, _ = cor_especial
+        else:
+            cor = 'green' if status == 'certo' else 'red'
+        
+        col.markdown(formatar_numero(numero, cor), unsafe_allow_html=True)
+
 
 def main():
     st.title('Análise de Padrões na Roleta Europeia')
     
     with st.sidebar:
         st.header("Configurações da Análise")
-        st.session_state.jogada_selecionada = st.selectbox('Selecione a Estratégia:', list(JOGADAS.keys()))
-        st.session_state.sequencias_consecutivas = st.slider('Sequências consecutivas para análise', min_value=2, max_value=5, value=3)
-        st.session_state.inverter_logica_sequencia = st.checkbox('Analisar sequências de "erros"', help="Verifica sequências consecutivas de números que *não* fazem parte da estratégia escolhida.")
-        st.session_state.inverter_logica = st.checkbox('Analisar quebra de sequência', help="Ex: Se a estratégia for 3 acertos, a quebra acontece em 2 acertos + 1 erro.")
+        if 'jogada_selecionada' not in st.session_state or st.session_state.jogada_selecionada not in JOGADAS:
+            st.session_state.jogada_selecionada = list(JOGADAS.keys())[0]
+        st.session_state.jogada_selecionada = st.selectbox('Selecione a Estratégia:', list(JOGADAS.keys()), index=list(JOGADAS.keys()).index(st.session_state.jogada_selecionada))
+        
+        st.session_state.sequencias_consecutivas = st.slider('Sequências consecutivas para análise', min_value=2, max_value=5, value=st.session_state.get('sequencias_consecutivas', 3))
+        st.session_state.inverter_logica_sequencia = st.checkbox('Analisar sequências de "erros"', help="Verifica sequências consecutivas de números que *não* fazem parte da estratégia escolhida.", value=st.session_state.get('inverter_logica_sequencia', False))
+        st.session_state.inverter_logica = st.checkbox('Analisar quebra de sequência', help="Ex: Se a estratégia for 3 acertos, a quebra acontece em 2 acertos + 1 erro.", value=st.session_state.get('inverter_logica', False))
         
         st.button('Limpar Números Sorteados', on_click=lambda: st.session_state.numeros_sorteados.clear())
 
@@ -99,19 +135,55 @@ def main():
 
     st.markdown(_RESPONSIVE_CSS, unsafe_allow_html=True)
     
+    calcular_metricas()
+    
+    st.subheader("Métricas de Desempenho")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(label="Total de Acertos (Azul)", value=st.session_state.acertos)
+    with col2:
+        st.metric(label="Total de Erros (Laranja)", value=st.session_state.erros)
+    
+    st.markdown("---")
+
+    st.subheader("Análise de Regiões Quentes")
+    if st.session_state.numeros_sorteados:
+        
+        # Adicione o controle deslizante para selecionar a quantidade de números
+        quantidade_analise = st.slider(
+            'Selecione a quantidade de números para a análise:',
+            min_value=10,
+            max_value=len(st.session_state.numeros_sorteados),
+            value=min(30, len(st.session_state.numeros_sorteados))
+        )
+
+        contagens, regiao_quente = analisar_regioes_quentes(st.session_state.numeros_sorteados, quantidade_analise)
+        
+        cols = st.columns(len(contagens))
+        for i, (nome, contagem) in enumerate(contagens.items()):
+            cols[i].metric(label=f"{nome}", value=f"{contagem}")
+        
+        st.markdown(f"#### A região mais quente é a dos **{regiao_quente}**")
+    else:
+        st.info("Aguardando números para análise de regiões...")
+    
+    st.markdown("---")
+    
     with st.container():
         if st.session_state.numeros_sorteados:
             num_colunas_exibicao = 8
             numeros_invertidos = st.session_state.numeros_sorteados[::-1]
             
-            cols = st.columns(num_colunas_exibicao)
-            
-            for i, numero in enumerate(numeros_invertidos):
-                render_numero(cols[i % num_colunas_exibicao], numero, i)
+            for i in range(0, len(numeros_invertidos), num_colunas_exibicao):
+                row_numeros = numeros_invertidos[i:i + num_colunas_exibicao]
+                cols = st.columns(len(row_numeros))
+                for j, numero in enumerate(row_numeros):
+                    render_numero(cols[j], numero, i + j)
         else:
             st.info("Aguardando números sorteados...")
     
-    adicionar_ultimos_numeros()
+    atualizar_numeros()
+    
 
 if __name__ == "__main__":
     main()
