@@ -1,0 +1,122 @@
+/* Estilos gerais */
+.st-emotion-cache-1yiv2bp {
+    min-width: 0;
+}
+.st-emotion-cache-ocqkz7 {
+    max-width: 700px;
+}
+h5 {
+    color: white !important;
+    margin: 0;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+h2 {
+    margin: 5px 0 0;
+    font-size: 2em;
+    font-weight: bold;
+}
+h4 {
+    color: white !important;
+}
+p, h5, h6, h3, h4 {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Estilos para as caixas de métricas */
+.metric-box {
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    min-width: 120px;
+    flex: 1;
+}
+.metric-box-acerto {
+    background-color: #007BFF;
+    width: 163px;
+    height: 130px;
+    color: white;
+}
+.metric-box-erro {
+    background-color: #FFA500;
+    width: 163px;
+    height: 130px;
+    color: white;
+}
+
+/* Estilos para as caixas de regiões quentes */
+.hot-region-box {
+    background-color: transparent;
+    border: 2px solid #555;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    width: 163px;
+    height: 130px;
+}
+.hot-region-Vizinho34 { border-color: #E74C3C !important; }
+.hot-region-Vizinho22 { border-color: #3498DB !important; }
+.hot-region-Vizinho0 { border-color: #2ECC71 !important; }
+.hot-region-Vizinho23 { border-color: #F39C12 !important; }
+
+/* Estilos para o resultado da região mais quente */
+.hot-region-winner {
+    margin-top: 20px;
+    color: white;
+    padding: 10px;
+}
+
+/* Estilos para os números */
+.numero-container {
+    text-align: center;
+}
+.numero-container span {
+    display: inline-block;
+    width: 45px;
+    height: 45px;
+    line-height: 45px;
+    border-radius: 50%;
+    color: white;
+    font-weight: bold;
+    font-size: 1em;
+    border: 2px solid black;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+}
+.numero-green { background-color: #28a745; }
+.numero-red { background-color: #dc3545; }
+.numero-blue { background-color: #007BFF; }
+.numero-orange { background-color: #FFA500; }
+.numero-zero { background-color: #000; }
+
+/* Estilo para as caixas de avisos de sinal */
+.signal-card {
+    background-color: transparent;
+    border: 2px solid #555;
+    padding: 15px;
+    border-radius: 20px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    height: auto;
+    width: max-content;
+    margin-bottom: 30px;
+}
+
+.signal-card h4 {
+    margin: 0;
+    font-size: 1.2em;
+    padding-bottom:0rem;
+}
+.signal-card .signal-number {
+    font-size: 1.5em;
+    display: inline-block;
+    vertical-align: middle;
+    padding-bottom: 15px;
+}

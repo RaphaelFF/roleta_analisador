@@ -27,22 +27,7 @@ JOGADAS = {
     ),
     "Vizinho 23": Jogada(
         "Vizinho 23",
-        {31, 14, 20, 1, 33, 16, 24, 5, 10, 23, 8, 30, 11, 36, 13, 27, 6, 34, 17},
-        {}
-    ),
-    "Vizinho 0": Jogada(
-        "Vizinho 0",
-        {34, 17, 25, 2, 21, 4, 19, 15, 32, 0, 26, 3, 35, 12, 28, 7, 29, 18, 22},
+        {0, 26, 3, 35, 12, 28, 7, 29, 18, 22, 9, 31, 14, 20, 1, 33, 16, 24, 5},
         {}
     )
-    # "Rua do Meio": Jogada(
-    #     "Rua do Meio",
-    #     {4, 5, 6, 7, 8, 9, 16, 17, 18, 19, 20, 21, 28, 29, 30, 31, 32, 33},
-    #     {} # Não há números especiais para essa jogada
-    # ),
-    # "Rua de Fora": Jogada(
-    #     "Rua de Fora",
-    #     {1, 2, 3, 10, 11, 12, 13, 14, 15, 22, 23, 24, 25, 26, 27, 34, 35, 36},
-    #     {} # Não há números especiais para essa jogada
-    # )
 }

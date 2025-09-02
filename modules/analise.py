@@ -1,4 +1,4 @@
-from .jogada import JOGADAS
+from .estrategias import JOGADAS
 
 def analisar_regioes_quentes(numeros_analisados, quantidade_numeros):
     """
