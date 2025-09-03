@@ -18,7 +18,7 @@ def atualizar_numeros():
         st.warning("Arquivo 'resultados.txt' não encontrado. Certifique-se de que o web scraper está rodando.")
         pass
 
-@st.cache_data
+#@st.cache_data
 def calcular_metricas(quantidade_sugerida, jogada_selecionada_key, sequencias_consecutivas, inverter_logica, inverter_logica_sequencia, numeros_sorteados):
     """
     Calcula e retorna o número de acertos e erros com base na jogada e quantidade de números selecionados.
@@ -56,15 +56,15 @@ def gerar_sinal():
     """
     Gera a mensagem de sinal de aposta quando um padrão é detectado.
     """
-    if st.session_state.ativar_sinal and len(st.session_state.numeros_sorteados) >= 2:
+    if st.session_state.ativar_sinal and len(st.session_state.numeros_sorteados) >= 0:
         jogada_sinal_obj = JOGADAS[st.session_state.jogada_sinal]
         
-        penultimo_numero = st.session_state.numeros_sorteados[-2]
+        penultimo_numero = st.session_state.numeros_sorteados[-1]
         status_penultimo_numero = jogada_sinal_obj.verificar(penultimo_numero)
 
         sinal = aplicar_cor_especial(
             penultimo_numero, status_penultimo_numero, jogada_sinal_obj.verificar,
-            st.session_state.numeros_sorteados, len(st.session_state.numeros_sorteados) - 2,
+            st.session_state.numeros_sorteados, len(st.session_state.numeros_sorteados) - 0,
             st.session_state.sinal_sequencias_consecutivas,
             st.session_state.sinal_inverter_logica,
             st.session_state.sinal_inverter_logica_sequencia
