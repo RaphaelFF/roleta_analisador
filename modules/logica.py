@@ -18,7 +18,7 @@ def atualizar_numeros():
         st.warning("Arquivo 'resultados.txt' não encontrado. Certifique-se de que o web scraper está rodando.")
         pass
 
-#@st.cache_data
+@st.cache_data
 def calcular_metricas(quantidade_sugerida, jogada_selecionada_key, sequencias_consecutivas, inverter_logica, inverter_logica_sequencia, numeros_sorteados):
     """
     Calcula e retorna o número de acertos e erros com base na jogada e quantidade de números selecionados.

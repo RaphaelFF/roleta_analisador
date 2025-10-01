@@ -6,12 +6,13 @@ from modules.estilos import renderizar_numero
 from modules.analise import analisar_regioes_quentes
 import os
 
+
 # --- 1. CONFIGURAÇÃO INICIAL DA PÁGINA ---
 # Configura o layout da página para ocupar a largura total
 st.set_page_config(layout="wide")
 
 # Ativa a atualização automática do Streamlit a cada 5 segundos
-st_autorefresh(interval=5000, key="auto_refresh")
+#st_autorefresh(interval=5000, key="auto_refresh")
 
 # --- 2. INICIALIZAÇÃO DO ESTADO DE SESSÃO ---
 DEFAULTS = {
@@ -42,6 +43,7 @@ with open(os.path.join("modules", "style.css")) as f:
 
 def main():
     st.title('Análise de Padrões na Roleta Europeia')
+    atualizar_numeros()
     
     # --- 4.1. BARRA LATERAL (SIDEBAR) ---
     with st.sidebar:
