@@ -78,7 +78,7 @@ def main():
     if st.session_state.numeros_sorteados:
         quantidade_analise = st.slider(
             'Selecione a quantidade de números para a análise:',
-            min_value=10,
+            min_value=0,
             max_value=len(st.session_state.numeros_sorteados),
             value=min(30, len(st.session_state.numeros_sorteados)),
             key="quantidade_analise_slider"
