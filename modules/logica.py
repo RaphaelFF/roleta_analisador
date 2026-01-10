@@ -36,7 +36,7 @@ def calcular_metricas(quantidade_sugerida, jogada_selecionada_key, sequencias_co
             status = jogada_selecionada_obj.verificar(numero)
             
             cor_especial = aplicar_cor_especial(
-                numero, status, jogada_selecionada_obj.verificar,
+                numero, status, jogada_selecionada_obj,
                 numeros_sorteados, indice_original,
                 sequencias_consecutivas,
                 inverter_logica,
@@ -45,6 +45,7 @@ def calcular_metricas(quantidade_sugerida, jogada_selecionada_key, sequencias_co
             
             if cor_especial:
                 cor, _ = cor_especial
+           
                 if cor == 'blue':
                     acertos += 1
                 elif cor == 'orange':
