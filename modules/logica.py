@@ -52,35 +52,34 @@ def calcular_metricas(quantidade_sugerida, jogada_selecionada_key, sequencias_co
                     erros += 1
 
     return acertos, erros
-
-def gerar_sinal():
-    """
-    Gera a mensagem de sinal de aposta quando um padrão é detectado.
-    """
-    if st.session_state.ativar_sinal and len(st.session_state.numeros_sorteados) >= 0:
-        jogada_sinal_obj = JOGADAS[st.session_state.jogada_sinal]
+# def gerar_sinal():
+#     """
+#     Gera a mensagem de sinal de aposta quando um padrão é detectado.
+#     """
+#     if st.session_state.ativar_sinal and len(st.session_state.numeros_sorteados) >= 0:
+#         jogada_sinal_obj = JOGADAS[st.session_state.jogada_sinal]
         
-        penultimo_numero = st.session_state.numeros_sorteados[-1]
-        status_penultimo_numero = jogada_sinal_obj.verificar(penultimo_numero)
+#         penultimo_numero = st.session_state.numeros_sorteados[-1]
+#         status_penultimo_numero = jogada_sinal_obj.verificar(penultimo_numero)
 
-        sinal = aplicar_cor_especial(
-            penultimo_numero, status_penultimo_numero, jogada_sinal_obj.verificar,
-            st.session_state.numeros_sorteados, len(st.session_state.numeros_sorteados) - 0,
-            st.session_state.sinal_sequencias_consecutivas,
-            st.session_state.sinal_inverter_logica,
-            st.session_state.sinal_inverter_logica_sequencia
-        )
+#         sinal = aplicar_cor_especial(
+#             penultimo_numero, status_penultimo_numero, jogada_sinal_obj.verificar,
+#             st.session_state.numeros_sorteados, len(st.session_state.numeros_sorteados) - 0,
+#             st.session_state.sinal_sequencias_consecutivas,
+#             st.session_state.sinal_inverter_logica,
+#             st.session_state.sinal_inverter_logica_sequencia
+#         )
 
-        if sinal and st.session_state.ultimo_sinal_numero != st.session_state.numeros_sorteados[-1]:
-            st.session_state.ultimo_sinal_numero = st.session_state.numeros_sorteados[-1]
-            cor_sinal, tipo_sinal = sinal
-            st.session_state.current_signal_alert = f"""
-            <div class="signal-card signal-card-{cor_sinal}">
-                <h4>Sinal detectado: Após o número  {penultimo_numero}</h4>
-                <span class="signal-number">Jogar no {st.session_state.jogada_sinal}</span><br>
-            </div>
-            """
-        elif not sinal and st.session_state.ultimo_sinal_numero != st.session_state.numeros_sorteados[-1]:
-            st.session_state.current_signal_alert = ""
-    elif st.session_state.ativar_sinal:
-         st.session_state.current_signal_alert = ""
+#         if sinal and st.session_state.ultimo_sinal_numero != st.session_state.numeros_sorteados[-1]:
+#             st.session_state.ultimo_sinal_numero = st.session_state.numeros_sorteados[-1]
+#             cor_sinal, tipo_sinal = sinal
+#             st.session_state.current_signal_alert = f"""
+#             <div class="signal-card signal-card-{cor_sinal}">
+#                 <h4>Sinal detectado: Após o número  {penultimo_numero}</h4>
+#                 <span class="signal-number">Jogar no {st.session_state.jogada_sinal}</span><br>
+#             </div>
+#             """
+#         elif not sinal and st.session_state.ultimo_sinal_numero != st.session_state.numeros_sorteados[-1]:
+#             st.session_state.current_signal_alert = ""
+#     elif st.session_state.ativar_sinal:
+#          st.session_state.current_signal_alert = ""

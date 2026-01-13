@@ -3,12 +3,38 @@ from .estrategias import JOGADAS
 
 def aplicar_cor_especial(numero, status, jogada_obj, numeros_sorteados, indice_atual, sequencias_consecutivas, inverter_logica, inverter_logica_sequencia):
     """
-    Aplica cores especiais. Para 'vizinho 17 e 9', o laranja exige gatilho anterior.
+    Aplica cores especiais. Para 'vizinho 17 e 9', exige 2 números de intervalo sem gatilho.
     """
-    status_alvo = 'errado' if inverter_logica_sequencia else 'certo'
     
-    # Verificação básica de sequência (mantendo sua lógica atual)
+    # --- 1. REGRA: VIZINHO 17 E 9 COM INTERVALO DE DESCANSO ---
+    if jogada_obj.nome == "vizinho 17 e 9":
+        if indice_atual >= 1:
+            # O número imediatamente anterior é o gatilho (17 ou 9)?
+            if jogada_obj.eh_especial(numeros_sorteados[indice_atual - 1]):
+                
+                # Agora verificamos se houve um intervalo de 2 números sem gatilho antes dele
+                intervalo_limpo = True
+                
+                # Checa o 2º número atrás (se existir)
+                if indice_atual >= 2:
+                    if jogada_obj.eh_especial(numeros_sorteados[indice_atual - 2]):
+                        intervalo_limpo = False
+                
+                # Checa o 3º número atrás (se existir)
+                if indice_atual >= 3:
+                    if jogada_obj.eh_especial(numeros_sorteados[indice_atual - 3]):
+                        intervalo_limpo = False
+                
+                # Só marca se o anterior for gatilho E os dois antes dele NÃO forem
+                if intervalo_limpo:
+                    return ('blue', numero) if status == 'certo' else ('orange', numero)
+                    
+        return None # Se não passar no critério, não pinta nada
+
+    # --- 2. REGRA PARA AS OUTRAS JOGADAS (Mantém o padrão original) ---
+    status_alvo = 'errado' if inverter_logica_sequencia else 'certo'
     if indice_atual >= sequencias_consecutivas - 1:
+        # ... (restante do código original que você já tem para sequências)
         consecutivos = all(
             jogada_obj.verificar(numeros_sorteados[indice_atual - k]) == status_alvo
             for k in range(1, sequencias_consecutivas)
@@ -20,21 +46,6 @@ def aplicar_cor_especial(numero, status, jogada_obj, numeros_sorteados, indice_a
         )
         
         if consecutivos and proximo_nao_alvo:
-            # --- NOVA LÓGICA PARA VIZINHO 17 E 9 ---
-            if jogada_obj.nome == "vizinho 17 e 9":
-                if indice_atual > 0:
-                    numero_anterior = numeros_sorteados[indice_atual - 1]
-                    
-                    # Se o anterior for especial (17 ou 9), define a cor pelo status atual
-                    if jogada_obj.eh_especial(numero_anterior):
-                        if status == 'certo':
-                            return 'blue', numero   # Acerto após o gatilho
-                        if status == 'errado':
-                            return 'orange', numero # Erro após o gatilho
-                            
-                return None # Se não houver gatilho anterior, não marca cor especial
-            
-            # --- LÓGICA PADRÃO PARA AS OUTRAS JOGADAS ---
             if inverter_logica:
                 if status == 'errado': return 'blue', numero
                 elif status == 'certo': return 'orange', numero

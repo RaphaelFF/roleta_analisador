@@ -1,32 +1,27 @@
-from seleniumbase import Driver
-from selenium.webdriver.common.by import By
-import time
 
-driver = Driver(uc=True)
+numeros = [
+    "30", "16", "22", "10", "18", "30", "1", "19", "24", "13",
+    "3", "0", "18", "17", "33", "27", "13", "15", "6", "7",
+    "18", "17", "16", "34", "18", "8", "35", "0", "16", "34",
+    "13", "28", "17", "25", "36", "6", "11", "5", "11", "2",
+    "33", "27", "26", "28", "2", "12", "25", "31", "10", "17",
+    "8", "33", "5", "2", "7", "22", "10", "29", "12", "17",
+    "6", "10", "26", "18", "31", "7", "21", "26", "1", "35",
+    "16", "21", "22", "16", "9", "11", "34", "31", "35", "14",
+    "8", "20", "2", "14", "25", "36", "7", "17", "15", "29",
+    "9", "33", "10", "15", "0", "28", "34", "15", "2", "10",
+    "21", "24", "13", "5", "29", "3", "26", "6", "36", "29",
+    "8", "9", "7", "34", "14", "1", "31", "11", "14", "17",
+    "6", "25", "5", "12", "28", "0", "10", "25", "22", "23",
+    "29", "19", "32", "17", "21", "35", "22", "17", "10", "28"
+]
 
-driver.get('https://start.bet.br/live-casino/game/3782019?provider=Playtech&from=%2Flive-casino')
-#/html/body/div[2]/div/div[3]/div[1]/div/div[1]/div/div/div[2]/div[3]/div/div/div[2]/div/div/div/div/div/div
-time.sleep(30)
+# Caminho do arquivo
+caminho_arquivo = 'resultados.txt'
 
-iframe_1 = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[1]/div/div/div[2]/iframe')
-driver.switch_to.frame(iframe_1)
+# Escrevendo no arquivo
+with open(caminho_arquivo, 'w') as f:
+    for numero in numeros:
+        f.write(f"{numero}\n")
 
-
-
-result = []
-
-
-try:
-    result = driver.find_element(By.XPATH, '/html/body/div[2]/div/div[3]/div[1]/div/div[1]/div/div/div[2]/div[3]/div/div/div[2]/div/div/div/div/div/div/div/div/div').text.split()
-except:
-    pass
-# try:
-#     result = driver.find_element(By.XPATH, '/html/body/div[2]/div/div[3]/div[1]/div/div[1]/div/div/div[2]/div[3]/div/div/div[2]/div/div/div/div/div/div/div/div/div').text.split()
-# except:
-    # pass
-
-print(result)
-
-time.sleep(10000)
-
-# /html/body/div[2]/div[3]/div[3]/div[1]/div[1]/div/div[2]/div[2]/div/div[2]/div[2]/div/div/div/div/div/div/div/div/div/div/div/div/div
+caminho_arquivo

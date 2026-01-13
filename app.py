@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from modules.estrategias import JOGADAS
-from modules.logica import atualizar_numeros, calcular_metricas, gerar_sinal
+from modules.logica import atualizar_numeros, calcular_metricas
 from modules.estilos import renderizar_numero
 from modules.analise import analisar_regioes_quentes
 import os
@@ -72,7 +72,7 @@ def main():
     - 🟥 **Vermelho**: Número que *não* faz parte da estratégia escolhida.
     """, unsafe_allow_html=True) 
 
-    gerar_sinal()
+    
     
     # Slider para selecionar a quantidade de números a serem analisados
     if st.session_state.numeros_sorteados:
