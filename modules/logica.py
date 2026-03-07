@@ -8,7 +8,7 @@ def atualizar_numeros():
     Lê o arquivo 'resultados.txt' e atualiza a lista de números sorteados na sessão.
     """
     try:
-        with open('resultados.txt', 'r') as f:
+        with open('resultados_roleta.txt', 'r') as f:
             linhas = f.readlines()
             if linhas != st.session_state.ultimas_linhas_processadas:
                 numeros = [int(linha.strip()) for linha in linhas if linha.strip().isdigit()]

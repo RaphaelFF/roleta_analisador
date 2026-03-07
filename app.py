@@ -12,7 +12,7 @@ import os
 st.set_page_config(layout="wide")
 
 # Ativa a atualização automática do Streamlit a cada 5 segundos
-#st_autorefresh(interval=5000, key="auto_refresh")
+st_autorefresh(interval=5000, key="auto_refresh")
 
 # --- 2. INICIALIZAÇÃO DO ESTADO DE SESSÃO ---
 DEFAULTS = {
