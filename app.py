@@ -15,7 +15,7 @@ st_autorefresh(interval=2000, key="auto_refresh")
 
 def adicionar_ultimos_numeros():
     try:
-        with open('resultados.txt', 'r') as f:
+        with open('resultados_roleta.txt', 'r') as f:
             linhas = f.readlines()
             total_linhas = len(linhas)
             
@@ -34,7 +34,7 @@ def adicionar_ultimos_numeros():
                 
                 # Atualiza a contagem de linhas processadas
                 st.session_state.linhas_processadas = total_linhas
-                st.rerun()
+                
                 
     except FileNotFoundError:
         st.warning("Arquivo 'resultados.txt' não encontrado. Certifique-se de que o web scraper está rodando.")
@@ -77,6 +77,7 @@ def render_numero(col, numero, indice_exibicao):
         col.markdown(formatar_numero(numero, status), unsafe_allow_html=True)
 
 def main():
+    
     st.title('Análise de Padrões na Roleta Europeia')
     
     with st.sidebar:
@@ -100,6 +101,7 @@ def main():
     st.markdown(_RESPONSIVE_CSS, unsafe_allow_html=True)
     
     with st.container():
+        
         if st.session_state.numeros_sorteados:
             num_colunas_exibicao = 8
             numeros_invertidos = st.session_state.numeros_sorteados[::-1]
@@ -111,7 +113,7 @@ def main():
         else:
             st.info("Aguardando números sorteados...")
     
-    adicionar_ultimos_numeros()
+        adicionar_ultimos_numeros()
 
 if __name__ == "__main__":
     main()
