@@ -1,89 +1,185 @@
 import time
+import requests
+import json
+import os
+import sys
+import signal
 from jogada import JOGADAS
-from cores import aplicar_cor_especial
+from dotenv import load_dotenv
 
-# Configurações
-ALVO_MINIMO = 3
+load_dotenv()
+
+# --- CONFIGURAÇÕES ---
+TOKEN = os.getenv('TOKEN')
+CHAT_ID = os.getenv('CHAT_ID') 
+ALVO_MINIMO = 3 
+MAX_GALE = 2 
 ARQUIVO_RESULTADOS = 'resultados_roleta.txt'
-ARQUIVO_ALERTAS = 'alertas_telegram_simulacao.txt'
+ARQUIVO_PLACAR = 'placar_detalhado.json'
+ESTRATEGIA_NOME = "Vizinho 34"
+
+# --- CORES PARA TERMINAL ---
+RESET = "\033[0m"
+BOLD = "\033[1m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+CYAN = "\033[96m"
+MAGENTA = "\033[95m"
+BLUE = "\033[94m"
+
+# --- GESTÃO DE DADOS ---
+def resetar_placar():
+    dados_vazios = {"greens": 0, "reds": 0, "gale0": 0, "gale1": 0, "gale2": 0}
+    with open(ARQUIVO_PLACAR, 'w') as f:
+        json.dump(dados_vazios, f)
+    return dados_vazios
+
+def carregar_placar():
+    if not os.path.exists(ARQUIVO_PLACAR):
+        return resetar_placar()
+    try:
+        with open(ARQUIVO_PLACAR, 'r') as f:
+            return json.load(f)
+    except:
+        return resetar_placar()
+
+def salvar_placar(placar):
+    with open(ARQUIVO_PLACAR, 'w') as f:
+        json.dump(placar, f)
+
+def enviar_telegram(mensagem):
+    hora_atual = time.strftime('%H:%M:%S')
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    payload = {"chat_id": CHAT_ID, "text": f"🕒 `[{hora_atual}]` \n{mensagem}", "parse_mode": "Markdown"}
+    try: requests.post(url, json=payload)
+    except: pass
+
+# --- RELATÓRIO ---
+def gerar_relatorio_final():
+    placar = carregar_placar()
+    total = placar['greens'] + placar['reds']
+    win_rate = (placar['greens'] / total * 100) if total > 0 else 0
+    return (
+        "📊 *RELATÓRIO FINAL DA SESSÃO*\n\n"
+        f"✅ *Total de Greens:* {placar['greens']}\n"
+        f"❌ *Total de Reds:* {placar['reds']}\n"
+        f"📈 *Assertividade:* {win_rate:.2f}%\n\n"
+        "--- *DETALHAMENTO* ---\n"
+        f"🟢 Direto: {placar['gale0']}\n"
+        f"🟡 Gale 1: {placar['gale1']}\n"
+        f"🟠 Gale 2: {placar['gale2']}\n"
+        "\n♻️ _Sessão encerrada e placar zerado._"
+    )
+
+def fechar_sistema(signum, frame):
+    print(f"\n{YELLOW}{BOLD}Gerando relatório e limpando dados...{RESET}")
+    enviar_telegram(gerar_relatorio_final())
+    resetar_placar()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, fechar_sistema)
+
+def get_status(n):
+    return JOGADAS[ESTRATEGIA_NOME].verificar(n)
+
+def log_terminal(trio, tipo, contagem=None, em_operacao=False, resultado=None, gale=0):
+    hora = time.strftime('%H:%M:%S')
+    trio_str = f"[{', '.join(map(str, trio))}]"
+    if not em_operacao:
+        if tipo == 'ERRO':
+            print(f"{YELLOW}[{hora}] SCANNER:{RESET} {trio_str} -> {RED}ERRO {contagem}/{ALVO_MINIMO}{RESET}")
+        else:
+            print(f"{CYAN}[{hora}] Monitorando fluxo...{RESET}", end="\r")
+    else:
+        label = f"GALE {gale}" if gale > 0 else "ENTRADA"
+        if resultado == 'GREEN':
+            print(f"\n{GREEN}{BOLD}[{hora}] ✅ GREEN NO {label}! {RESET} Bloco: {trio_str}")
+        elif resultado == 'RED':
+            print(f"\n{RED}{BOLD}[{hora}] ❌ RED FINAL! {RESET} Bloco: {trio_str}")
+        else:
+            print(f"{MAGENTA}[{hora}] 🎲 {label} ATIVA: {RESET} Analisando {trio_str}...")
 
 def monitorar_estrategia():
-    print("Iniciando monitoramento (Incremento e Quebra)...")
-    
-    linhas_processadas = 0
-    tamanho_lista_especial_anterior = 0
-    cor_da_ultima_sequencia = None 
+    placar = resetar_placar() 
+    print(f"\n{BOLD}{BLUE}=========================================={RESET}")
+    print(f"{BOLD}{BLUE}      BOT INICIADO - PLACAR ZERADO        {RESET}")
+    print(f"{BOLD}{BLUE}=========================================={RESET}\n")
+    enviar_telegram(f"🚀 *SESSÃO INICIADA*\nEstratégia: `{ESTRATEGIA_NOME}`")
 
-    # Configurações da estratégia (Baseadas no seu sistema)
-    jogada_nome = "Vizinho 34"
-    seq_cons_interface = 3
-    inv_log = False
-    inv_log_seq = False
+    ponteiro = 0
+    if os.path.exists(ARQUIVO_RESULTADOS):
+        with open(ARQUIVO_RESULTADOS, 'r') as f:
+            ponteiro = len([l for l in f.readlines() if l.strip()])
+
+    contador_gatilho = 0
+    em_operacao = False
+    gale_atual = 0
 
     while True:
         try:
             with open(ARQUIVO_RESULTADOS, 'r') as f:
-                linhas = f.readlines()
+                nums = [int(l.strip()) for l in f.readlines() if l.strip()]
             
-            if len(linhas) > linhas_processadas:
-                numeros_sorteados = [int(l.strip()) for l in list(linhas) if l.strip()]
+            while ponteiro <= len(nums) - 3:
+                trio = nums[ponteiro : ponteiro + 3]
+                res = [get_status(n) for n in trio]
                 
-                if numeros_sorteados:
-                    cores_especiais = obter_lista_cores_especiais(
-                        numeros_sorteados, jogada_nome, seq_cons_interface, inv_log, inv_log_seq
-                    )
-                    
-                    # Verifica se uma nova cor especial (azul ou laranja) foi detectada
-                    if len(cores_especiais) > tamanho_lista_especial_anterior:
-                        nova_cor = cores_especiais[-1]
+                if not em_operacao:
+                    if res == ['certo', 'certo', 'errado']:
+                        pre_valido = True
+                        if ponteiro > 0 and get_status(nums[ponteiro - 1]) == 'certo':
+                            pre_valido = False
                         
-                        # 1. LÓGICA DE QUEBRA
-                        if cor_da_ultima_sequencia and nova_cor != cor_da_ultima_sequencia:
-                            nome_cor_quebrada = "AZUL" if cor_da_ultima_sequencia == 'blue' else "LARANJA"
-                            disparar_alerta(f"STATUS: Sequência {nome_cor_quebrada} quebrada. Analisando...")
-                        
-                        # 2. LÓGICA DE INCREMENTO
-                        # Conta quantos elementos iguais existem no final da lista
-                        contador_atual = 0
-                        for c in reversed(cores_especiais):
-                            if c == nova_cor:
-                                contador_atual += 1
-                            else:
-                                break
-                        
-                        # Só dispara se atingir o alvo mínimo ou for um incremento superior a ele
-                        if contador_atual >= ALVO_MINIMO:
-                            nome_cor_atual = "AZUIS" if nova_cor == 'blue' else "LARANJAS"
-                            disparar_alerta(f"ALERTA: Identificado {contador_atual} {nome_cor_atual} seguidos!")
-                        
-                        # Atualiza estados para o próximo loop
-                        cor_da_ultima_sequencia = nova_cor
-                        tamanho_lista_especial_anterior = len(cores_especiais)
+                        if pre_valido:
+                            contador_gatilho += 1
+                            log_terminal(trio, 'ERRO', contagem=contador_gatilho)
+                            ponteiro += 3
+                            if contador_gatilho >= ALVO_MINIMO:
+                                em_operacao = True
+                                gale_atual = 0
+                                enviar_telegram(f"⚠️ *SINAL CONFIRMADO* ({ALVO_MINIMO} Erros)\n*FAÇA A ENTRADA AGORA!*")
+                        else:
+                            ponteiro += 1
+                    else:
+                        ponteiro += 1
+                        log_terminal(trio, 'BUSCA')
                 
-                linhas_processadas = len(linhas)
-        
-        except FileNotFoundError:
-            pass
-        
-        time.sleep(2)
+                else:
+                    deu_green = (res == ['certo', 'certo', 'certo'])
+                    deu_red = (res == ['certo', 'certo', 'errado'])
 
-def obter_lista_cores_especiais(numeros, jogada_nome, seq_cons, inv_log, inv_log_seq):
-    """Filtra o histórico para retornar apenas as cores blue/orange conforme cores.py"""
-    jogada_obj = JOGADAS[jogada_nome]
-    lista_especial = []
-    for i, num in enumerate(numeros):
-        status = jogada_obj.verificar(num)
-        cor_info = aplicar_cor_especial(num, status, jogada_obj.verificar, numeros, i, seq_cons, inv_log, inv_log_seq)
-        if cor_info:
-            lista_especial.append(cor_info[0])
-    return lista_especial
-
-def disparar_alerta(mensagem):
-    timestamp = time.strftime('%H:%M:%S')
-    msg_formatada = f"[{timestamp}] {mensagem}"
-    print(msg_formatada)
-    with open(ARQUIVO_ALERTAS, 'a') as f:
-        f.write(msg_formatada + "\n")
+                    if deu_green:
+                        placar['greens'] += 1
+                        placar[f"gale{gale_atual}"] += 1
+                        salvar_placar(placar)
+                        log_terminal(trio, 'ACERTO', em_operacao=True, resultado='GREEN', gale=gale_atual)
+                        info_gale = f"Gale {gale_atual}" if gale_atual > 0 else "Direto"
+                        enviar_telegram(f"✅ *GREEN {info_gale.upper()}!*\nBloco: `{trio}`\n📊 Placar: {placar['greens']}G | {placar['reds']}R")
+                        em_operacao = False
+                        contador_gatilho = 0
+                        ponteiro += 3
+                    elif deu_red:
+                        if gale_atual < MAX_GALE:
+                            gale_atual += 1
+                            # --- AVISO DE GALE NO TELEGRAM ---
+                            enviar_telegram(f"🔄 *BLOCO DE ERRO:* `{trio}`\n*INDICAÇÃO:* Partindo para o **GALE {gale_atual}**!")
+                            
+                            log_terminal(trio, 'ERRO', em_operacao=True, gale=gale_atual)
+                            ponteiro += 3
+                        else:
+                            placar['reds'] += 1
+                            salvar_placar(placar)
+                            log_terminal(trio, 'ERRO', em_operacao=True, resultado='RED', gale=gale_atual)
+                            enviar_telegram(f"❌ *RED FINAL*\nBloco: `{trio}`\n📊 Placar: {placar['greens']}G | {placar['reds']}R")
+                            em_operacao = False
+                            contador_gatilho = 0
+                            ponteiro += 3
+                    else:
+                        ponteiro += 1
+            time.sleep(1)
+        except Exception as e:
+            time.sleep(5)
 
 if __name__ == "__main__":
     monitorar_estrategia()
