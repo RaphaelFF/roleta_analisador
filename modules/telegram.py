@@ -2,195 +2,210 @@ import time
 import requests
 import json
 import os
-import sys
-import signal
 from jogada import JOGADAS
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- CONFIGURAÇÕES ---
+# --- CONFIGURAÇÕES GERAIS ---
 TOKEN = os.getenv('TOKEN')
 CHAT_ID = os.getenv('CHAT_ID') 
-ALVO_MINIMO = 2
-MAX_GALE = 3
-TAMANHO_BLOCO = 3  # Ajuste aqui conforme sua estratégia
 ARQUIVO_RESULTADOS = 'resultados_roleta.txt'
-ARQUIVO_PLACAR = 'placar_detalhado.json'
-ESTRATEGIA_NOME = "Vizinho 34"
+MAX_GALE = 3
 
-# --- CORES PARA TERMINAL ---
-RESET = "\033[0m"
-BOLD = "\033[1m"
-GREEN = "\033[92m"
-RED = "\033[91m"
-YELLOW = "\033[93m"
-CYAN = "\033[96m"
-MAGENTA = "\033[95m"
-BLUE = "\033[94m"
+# --- ESTRUTURA DE CORES ---
+RESET_C, GREEN, RED, YELLOW, CYAN, BLUE, WHITE = "\033[0m", "\033[92m", "\033[91m", "\033[93m", "\033[96m", "\033[94m", "\033[97m"
 
-# --- GESTÃO DE DADOS ---
-def resetar_placar():
-    dados_vazios = {"greens": 0, "reds": 0, "gale0": 0, "gale1": 0, "gale2": 0, "gale3": 0}
-    with open(ARQUIVO_PLACAR, 'w') as f:
-        json.dump(dados_vazios, f)
-    return dados_vazios
+# --- CENTRAL DE ESTRATÉGIAS ---
+CONFIG_ESTRATEGIAS = [
+    {
+        "id": "base_v34",
+        "nome": "Vizinhos 34 (Base)",
+        "tipo": "BASE",
+        "jogada_a": "Vizinho 34",
+        "tamanho_bloco": 3,
+        "alvo_minimo": 2,
+        "ativo": True
+    },
+    {
+        "id": "alt_v",
+        "nome": "Alternância (Inicia V)",
+        "tipo": "ALTERNANCIA",
+        "setup_grupo": "Pretos",
+        "espera_grupo": "Vermelhos",
+        "oposto_grupo": "Pretos",
+        "tamanho_bloco": 4,
+        "alvo_minimo": 2,
+        "ativo": True
+    },
+    {
+        "id": "alt_p",
+        "nome": "Alternância (Inicia P)",
+        "tipo": "ALTERNANCIA",
+        "setup_grupo": "Vermelhos",
+        "espera_grupo": "Pretos",
+        "oposto_grupo": "Vermelhos",
+        "tamanho_bloco": 4,
+        "alvo_minimo": 2,
+        "ativo": True
+    }
+]
 
-def carregar_placar():
-    if not os.path.exists(ARQUIVO_PLACAR):
-        return resetar_placar()
-    try:
-        with open(ARQUIVO_PLACAR, 'r') as f:
-            return json.load(f)
-    except:
-        return resetar_placar()
+# --- DICIONÁRIO DE RELATÓRIO DETALHADO ---
+# Agora cada estratégia rastreia: Diretas, G1, G2, G3 e Reds
+RELATORIO = {est['id']: {
+    "nome": est['nome'],
+    "direta": 0,
+    "g1": 0,
+    "g2": 0,
+    "g3": 0,
+    "reds": 0
+} for est in CONFIG_ESTRATEGIAS}
 
-def salvar_placar(placar):
-    with open(ARQUIVO_PLACAR, 'w') as f:
-        json.dump(placar, f)
+# --- FUNÇÕES DE COMUNICAÇÃO ---
 
 def enviar_telegram(mensagem):
-    hora_atual = time.strftime('%H:%M:%S')
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": f"🕒 `[{hora_atual}]` \n{mensagem}", "parse_mode": "Markdown"}
-    try: requests.post(url, json=payload)
+    try: requests.post(url, json={"chat_id": CHAT_ID, "text": mensagem, "parse_mode": "Markdown"})
     except: pass
 
-# --- RELATÓRIO ---
+def msg_formatada(tipo, est_nome, gatilho=0, alvo=0, bloco=None, gale=0):
+    if tipo == "ANALISE":
+        msg = f"🔍 *ANÁLISE EM CURSO*\n\n📈 *Estratégia:* `{est_nome}`\n🚫 *Progresso:* `{gatilho}/{alvo}`\n🔢 *Últimos:* `{bloco}`"
+    elif tipo == "ENTRADA":
+        msg = f"⚠️ *ENTRADA CONFIRMADA*\n\n🎯 *Jogada:* `{est_nome}`\n💰 *Fazer:* Entrada Padrão"
+    elif tipo == "GREEN":
+        icon = "✅✅✅✅✅" if gale == 0 else "✅✅✅✅✅"
+        msg = f"{icon} *GREEN NO ALVO!*\n\n📊 *Estratégia:* `{est_nome}`\n✨ *Resultado:* `{'DIRETO' if gale == 0 else f'GALE {gale}'}`"
+    elif tipo == "RED":
+        msg = f"❌❌❌❌❌ *RED FINAL*\n\n📉 *Estratégia:* `{est_nome}`\n⚠️ *Aviso:* Aguarde novo padrão."
+    enviar_telegram(msg)
+
 def gerar_relatorio_final():
-    placar = carregar_placar()
-    total = placar['greens'] + placar['reds']
-    win_rate = (placar['greens'] / total * 100) if total > 0 else 0
-    return (
-        "📊 *RELATÓRIO FINAL DA SESSÃO*\n\n"
-        f"✅ *Total de Greens:* {placar['greens']}\n"
-        f"❌ *Total de Reds:* {placar['reds']}\n"
-        f"📈 *Assertividade:* {win_rate:.2f}%\n\n"
-        "--- *DETALHAMENTO* ---\n"
-        f"🟢 Direto: {placar['gale0']}\n"
-        f"🟡 Gale 1: {placar['gale1']}\n"
-        f"🟠 Gale 2: {placar['gale2']}\n"
-        f"🟠 Gale 3: {placar['gale3']}\n"
-        "\n♻️ _Sessão encerrada e placar zerado._"
-    )
+    txt = "🏁 *RELATÓRIO DETALHADO DA SESSÃO*\n" + "─" * 20 + "\n"
+    total_g = 0
+    total_r = 0
+    
+    for id, d in RELATORIO.items():
+        greens_est = d['direta'] + d['g1'] + d['g2'] + d['g3']
+        total_g += greens_est
+        total_r += d['reds']
+        
+        txt += f"🔹 *{d['nome']}*\n"
+        txt += f"   🎯 Diretas: `{d['direta']}`\n"
+        txt += f"   1️⃣ Gale 1: `{d['g1']}`\n"
+        txt += f"   2️⃣ Gale 2: `{d['g2']}`\n"
+        if MAX_GALE >= 3: txt += f"   3️⃣ Gale 3: `{d['g3']}`\n"
+        txt += f"   ❌ Reds: `{d['reds']}`\n"
+        txt += f"   📈 Winrate: `{((greens_est/(greens_est+d['reds']))*100 if (greens_est+d['reds']) > 0 else 0):.1f}%`\n\n"
 
-def fechar_sistema(signum, frame):
-    print(f"\n{YELLOW}{BOLD}Gerando relatório e limpando dados...{RESET}")
-    enviar_telegram(gerar_relatorio_final())
-    resetar_placar()
-    sys.exit(0)
+    txt += "─" * 20 + f"\n🏆 *TOTAL GERAL:* `{total_g}G / {total_r}R`"
+    enviar_telegram(txt)
 
-signal.signal(signal.SIGINT, fechar_sistema)
+def print_status_terminal(est_id):
+    d = RELATORIO[est_id]
+    total_g = d['direta'] + d['g1'] + d['g2'] + d['g3']
+    print(f"{WHITE}[STATUS]{RESET_C} {d['nome']}: {GREEN}G:{total_g}{RESET_C} | {RED}R:{d['reds']}{RESET_C} (D:{d['direta']} G1:{d['g1']} G2:{d['g2']})")
 
-def get_status(n):
-    return JOGADAS[ESTRATEGIA_NOME].verificar(n)
+# --- MOTORES DE LÓGICA (Mantidos) ---
 
-def log_terminal(bloco, tipo, contagem=None, em_operacao=False, resultado=None, gale=0):
-    hora = time.strftime('%H:%M:%S')
-    trio_str = f"[{', '.join(map(str, bloco))}]"
-    if not em_operacao:
-        if tipo == 'ERRO':
-            print(f"{YELLOW}[{hora}] SCANNER:{RESET} {trio_str} -> {RED}ERRO {contagem}/{ALVO_MINIMO}{RESET}")
-        else:
-            print(f"{CYAN}[{hora}] Monitorando fluxo...{RESET}", end="\r")
-    else:
-        label = f"GALE {gale}" if gale > 0 else "ENTRADA"
-        if resultado == 'GREEN':
-            print(f"\n{GREEN}{BOLD}[{hora}] ✅ GREEN NO {label}! {RESET} Bloco: {trio_str}")
-        elif resultado == 'RED':
-            print(f"\n{RED}{BOLD}[{hora}] ❌ RED FINAL! {RESET} Bloco: {trio_str}")
-        else:
-            print(f"{MAGENTA}[{hora}] 🎲 {label} ATIVA: {RESET} Analisando {trio_str}...")
+def processar_base(bloco, jogada_nome):
+    res = [JOGADAS[jogada_nome].verificar(n) for n in bloco]
+    if res[-1] == 'errado' and all(x == 'certo' for x in res[:-1]): return "ERRO"
+    if all(x == 'certo' for x in res): return "ACERTO"
+    return "NADA"
 
-def monitorar_estrategia():
-    placar = resetar_placar() 
-    print(f"\n{BOLD}{BLUE}=========================================={RESET}")
-    print(f"{BOLD}{BLUE}      BOT INICIADO - PLACAR ZERADO        {RESET}")
-    print(f"{BOLD}{BLUE}=========================================={RESET}\n")
-    enviar_telegram(f"🚀 *SESSÃO INICIADA*\nEstratégia: `{ESTRATEGIA_NOME}`")
+def processar_alternancia(historico, setup_g, espera_g, oposto_g, tamanho):
+    if len(historico) < (tamanho + 2): return "NADA", 0, None
+    setup_nums = historico[-(tamanho+2) : -tamanho]
+    if not all(JOGADAS[setup_g].verificar(n) == 'certo' for n in setup_nums): return "NADA", 1, None
+    bloco = historico[-tamanho:]
+    if 0 in bloco: return "NADA", 1, None
+    for i, num in enumerate(bloco):
+        alvo = espera_g if i % 2 == 0 else oposto_g
+        if JOGADAS[alvo].verificar(num) != 'certo':
+            if i == tamanho - 1: return "ERRO", tamanho + 2, setup_nums
+            return "NADA", 1, None
+    return "ACERTO", tamanho + 2, setup_nums
 
-    ponteiro = 0
-    if os.path.exists(ARQUIVO_RESULTADOS):
-        with open(ARQUIVO_RESULTADOS, 'r') as f:
-            ponteiro = len([l for l in f.readlines() if l.strip()])
+# --- LOOP PRINCIPAL ---
 
-    contador_gatilho = 0
-    em_operacao = False
-    gale_atual = 0
+def monitorar():
+    ponteiros = {est['id']: 0 for est in CONFIG_ESTRATEGIAS}
+    gatilhos = {est['id']: 0 for est in CONFIG_ESTRATEGIAS}
+    em_operacao = {est['id']: False for est in CONFIG_ESTRATEGIAS}
+    gale_atual = {est['id']: 0 for est in CONFIG_ESTRATEGIAS}
 
-    while True:
-        try:
+    print(f"{BLUE}=== BOT MULTI-ESTRATÉGIA (RELATÓRIO PRO) ATIVO ==={RESET_C}")
+
+    try:
+        while True:
+            if not os.path.exists(ARQUIVO_RESULTADOS): continue
             with open(ARQUIVO_RESULTADOS, 'r') as f:
                 nums = [int(l.strip()) for l in f.readlines() if l.strip()]
-            
-            while ponteiro <= len(nums) - TAMANHO_BLOCO:
-                bloco = nums[ponteiro : ponteiro + TAMANHO_BLOCO]
-                res = [get_status(n) for n in bloco]
-                
-                if not em_operacao:
-                    # REGRA GATILHO: Último errado, anteriores certos
-                    if res[-1] == 'errado' and all(x == 'certo' for x in res[:-1]):
-                        pre_valido = True
-                        if ponteiro > 0 and get_status(nums[ponteiro - 1]) == 'certo':
-                            pre_valido = False
-                        
-                        if pre_valido:
-                            contador_gatilho += 1
-                            
-                            # --- LOG NO TERMINAL ---
-                            log_terminal(bloco, 'ERRO', contagem=contador_gatilho)
-                            
-                            # --- NOVO: LOG NO TELEGRAM ---
-                            enviar_telegram(f"🔍 *SCANNER:* `{bloco}`\n🚩 Erro acumulado: *{contador_gatilho}/{ALVO_MINIMO}*")
-                            
-                            ponteiro += TAMANHO_BLOCO
-                            
-                            if contador_gatilho >= ALVO_MINIMO:
-                                em_operacao = True
-                                gale_atual = 0
-                                enviar_telegram(f"⚠️ *ENTRADA CONFIRMADA!*")
-                        else:
-                            ponteiro += 1
-                    else:
-                        ponteiro += 1
-                        log_terminal(bloco, 'BUSCA')
-                
-                else:
-                    # LÓGICA DE RESULTADO
-                    deu_green = all(x == 'certo' for x in res)
-                    deu_red = res[-1] == 'errado' and all(x == 'certo' for x in res[:-1])
 
-                    if deu_green:
-                        placar['greens'] += 1
-                        placar[f"gale{gale_atual}"] += 1
-                        salvar_placar(placar)
-                        log_terminal(bloco, 'ACERTO', em_operacao=True, resultado='GREEN', gale=gale_atual)
-                        
-                        info_gale = f"Gale {gale_atual}" if gale_atual > 0 else "Direto"
-                        enviar_telegram(f"✅ *GREEN {info_gale.upper()}!*\nBloco: `{bloco}`\n📊 Placar: {placar['greens']}G | {placar['reds']}R")
-                        
-                        em_operacao = False
-                        contador_gatilho = 0
-                        ponteiro += TAMANHO_BLOCO
-                    elif deu_red:
-                        if gale_atual < MAX_GALE:
-                            gale_atual += 1
-                            enviar_telegram(f"🔄 *ERRO:* `{bloco}`\nPartindo para o **GALE {gale_atual}**!")
-                            log_terminal(bloco, 'ERRO', em_operacao=True, gale=gale_atual)
-                            ponteiro += TAMANHO_BLOCO
-                        else:
-                            placar['reds'] += 1
-                            salvar_placar(placar)
-                            log_terminal(bloco, 'ERRO', em_operacao=True, resultado='RED', gale=gale_atual)
-                            enviar_telegram(f"❌ *RED FINAL*\nBloco: `{bloco}`\n📊 Placar: {placar['greens']}G | {placar['reds']}R")
-                            em_operacao = False
-                            contador_gatilho = 0
-                            ponteiro += TAMANHO_BLOCO
+            for est in CONFIG_ESTRATEGIAS:
+                if not est['ativo']: continue
+                pid = est['id']
+                t = est['tamanho_bloco']
+                req = t if est['tipo'] == "BASE" else t + 2
+
+                while ponteiros[pid] <= len(nums) - req:
+                    h_total = nums[:ponteiros[pid] + req]
+                    bloco_focado = nums[ponteiros[pid] : ponteiros[pid] + t]
+                    setup_info = None
+
+                    if est['tipo'] == "BASE":
+                        resultado = processar_base(bloco_focado, est['jogada_a'])
+                        pulo = 1 if resultado == "NADA" else t
                     else:
-                        ponteiro += 1
+                        resultado, pulo, setup_info = processar_alternancia(h_total, est['setup_grupo'], est['espera_grupo'], est['oposto_grupo'], t)
+
+                    hora = time.strftime('%H:%M:%S')
+                    
+                    if resultado != "NADA":
+                        if setup_info: print(f"{CYAN}[SETUP {est['nome']}]{RESET_C} {setup_info}")
+                        
+                        if not em_operacao[pid]:
+                            if resultado == "ERRO":
+                                gatilhos[pid] += 1
+                                print(f"[{hora}] {YELLOW}{est['nome']}{RESET_C}: ERRO {gatilhos[pid]}/{est['alvo_minimo']}")
+                                msg_formatada("ANALISE", est['nome'], gatilhos[pid], est['alvo_minimo'], h_total[-t:])
+                                if gatilhos[pid] >= est['alvo_minimo']:
+                                    em_operacao[pid], gale_atual[pid] = True, 0
+                                    msg_formatada("ENTRADA", est['nome'])
+                            elif resultado == "ACERTO": gatilhos[pid] = 0
+                        else:
+                            if resultado == "ACERTO":
+                                # Registrar detalhadamente no relatório
+                                if gale_atual[pid] == 0: RELATORIO[pid]['direta'] += 1
+                                elif gale_atual[pid] == 1: RELATORIO[pid]['g1'] += 1
+                                elif gale_atual[pid] == 2: RELATORIO[pid]['g2'] += 1
+                                elif gale_atual[pid] == 3: RELATORIO[pid]['g3'] += 1
+
+                                print(f"[{hora}] {GREEN}GREEN {est['nome']}!{RESET_C}")
+                                print_status_terminal(pid)
+                                msg_formatada("GREEN", est['nome'], gale=gale_atual[pid])
+                                em_operacao[pid], gatilhos[pid] = False, 0
+                            elif resultado == "ERRO":
+                                if gale_atual[pid] < MAX_GALE:
+                                    gale_atual[pid] += 1
+                                    print(f"[{hora}] {BLUE}GALE {gale_atual[pid]} em {est['nome']}{RESET_C}")
+                                    enviar_telegram(f"🔄 *GALE {gale_atual[pid]}* - {est['nome']}")
+                                else:
+                                    RELATORIO[pid]['reds'] += 1
+                                    print(f"[{hora}] {RED}RED {est['nome']}!{RESET_C}")
+                                    print_status_terminal(pid)
+                                    msg_formatada("RED", est['nome'])
+                                    em_operacao[pid], gatilhos[pid] = False, 0
+                    
+                    ponteiros[pid] += pulo
             time.sleep(1)
-        except Exception as e:
-            time.sleep(5)
+    except KeyboardInterrupt:
+        print(f"\n{YELLOW}Finalizando sistema... Gerando relatório PRO.{RESET_C}")
+    finally:
+        gerar_relatorio_final()
+        print(f"{GREEN}Relatório detalhado enviado ao Telegram!{RESET_C}")
 
 if __name__ == "__main__":
-    monitorar_estrategia()
+    monitorar()
