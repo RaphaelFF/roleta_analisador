@@ -91,6 +91,7 @@ def executar_bot():
             ultimo_clique_atividade = time.time()
 
             while True:
+                '''
                 try:
                     # 1. LÓGICA ANTI-INATIVIDADE (Alternando Abas)
                     agora = time.time()
@@ -112,29 +113,30 @@ def executar_bot():
                                 print("✅ Interação via abas concluída com sucesso.")
                         except Exception as e:
                             print(f"⚠️ Erro ao alternar abas: {e}")
+                '''    
 
-                    # 2. CAPTURA DE NÚMEROS (INCLUINDO REPETIDOS)
-                    container = page.locator('div[data-testid="game-statistics"]')
-                    # Pegamos a lista de todos os últimos números visíveis
-                    numeros_atuais = container.locator('div[data-testid="single-result"]').all_inner_texts()
-                    
-                    if numeros_atuais:
-                        # Se o histórico mudou de alguma forma (novo número entrou)
-                        if numeros_atuais != ultimo_historico_completo:
-                            # O número novo é sempre o índice 0
-                            novo_numero = numeros_atuais[0]
-                            
-                            timestamp = time.strftime('%H:%M:%S')
-                            print(f"[{timestamp}] NOVO RESULTADO: {novo_numero}")
-                            
-                            with open("resultados_roleta.txt", "a") as f:
-                                f.write(f"{novo_numero}\n")
-                            
-                            # Atualizamos o histórico completo para comparação na próxima volta
-                            ultimo_historico_completo = numeros_atuais
-                    
-                    time.sleep(5)
-
+                # 2. CAPTURA DE NÚMEROS (INCLUINDO REPETIDOS)
+                container = page.locator('div[data-testid="game-statistics"]')
+                # Pegamos a lista de todos os últimos números visíveis
+                numeros_atuais = container.locator('div[data-testid="single-result"]').all_inner_texts()
+                
+                if numeros_atuais:
+                    # Se o histórico mudou de alguma forma (novo número entrou)
+                    if numeros_atuais != ultimo_historico_completo:
+                        # O número novo é sempre o índice 0
+                        novo_numero = numeros_atuais[0]
+                        
+                        timestamp = time.strftime('%H:%M:%S')
+                        print(f"[{timestamp}] NOVO RESULTADO: {novo_numero}")
+                        
+                        with open("resultados_roleta.txt", "a") as f:
+                            f.write(f"{novo_numero}\n")
+                        
+                        # Atualizamos o histórico completo para comparação na próxima volta
+                        ultimo_historico_completo = numeros_atuais
+                
+                time.sleep(5)
+                '''
                 except Exception as inner_e:
                     print("Recuperando interface...")
                     try:
@@ -142,7 +144,7 @@ def executar_bot():
                         time.sleep(1)
                         page.locator('button[data-tab-key="last500"]').click()
                     except: pass
-
+                '''
         except Exception as e:
             print(f"\n[ERRO CRÍTICO]: {e}")
         finally:

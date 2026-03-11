@@ -12,8 +12,9 @@ load_dotenv()
 # --- CONFIGURAÇÕES ---
 TOKEN = os.getenv('TOKEN')
 CHAT_ID = os.getenv('CHAT_ID') 
-ALVO_MINIMO = 3 
-MAX_GALE = 2 
+ALVO_MINIMO = 2
+MAX_GALE = 3
+TAMANHO_BLOCO = 3  # Ajuste aqui conforme sua estratégia
 ARQUIVO_RESULTADOS = 'resultados_roleta.txt'
 ARQUIVO_PLACAR = 'placar_detalhado.json'
 ESTRATEGIA_NOME = "Vizinho 34"
@@ -30,7 +31,7 @@ BLUE = "\033[94m"
 
 # --- GESTÃO DE DADOS ---
 def resetar_placar():
-    dados_vazios = {"greens": 0, "reds": 0, "gale0": 0, "gale1": 0, "gale2": 0}
+    dados_vazios = {"greens": 0, "reds": 0, "gale0": 0, "gale1": 0, "gale2": 0, "gale3": 0}
     with open(ARQUIVO_PLACAR, 'w') as f:
         json.dump(dados_vazios, f)
     return dados_vazios
@@ -69,6 +70,7 @@ def gerar_relatorio_final():
         f"🟢 Direto: {placar['gale0']}\n"
         f"🟡 Gale 1: {placar['gale1']}\n"
         f"🟠 Gale 2: {placar['gale2']}\n"
+        f"🟠 Gale 3: {placar['gale3']}\n"
         "\n♻️ _Sessão encerrada e placar zerado._"
     )
 
@@ -83,9 +85,9 @@ signal.signal(signal.SIGINT, fechar_sistema)
 def get_status(n):
     return JOGADAS[ESTRATEGIA_NOME].verificar(n)
 
-def log_terminal(trio, tipo, contagem=None, em_operacao=False, resultado=None, gale=0):
+def log_terminal(bloco, tipo, contagem=None, em_operacao=False, resultado=None, gale=0):
     hora = time.strftime('%H:%M:%S')
-    trio_str = f"[{', '.join(map(str, trio))}]"
+    trio_str = f"[{', '.join(map(str, bloco))}]"
     if not em_operacao:
         if tipo == 'ERRO':
             print(f"{YELLOW}[{hora}] SCANNER:{RESET} {trio_str} -> {RED}ERRO {contagem}/{ALVO_MINIMO}{RESET}")
@@ -121,60 +123,69 @@ def monitorar_estrategia():
             with open(ARQUIVO_RESULTADOS, 'r') as f:
                 nums = [int(l.strip()) for l in f.readlines() if l.strip()]
             
-            while ponteiro <= len(nums) - 3:
-                trio = nums[ponteiro : ponteiro + 3]
-                res = [get_status(n) for n in trio]
+            while ponteiro <= len(nums) - TAMANHO_BLOCO:
+                bloco = nums[ponteiro : ponteiro + TAMANHO_BLOCO]
+                res = [get_status(n) for n in bloco]
                 
                 if not em_operacao:
-                    if res == ['certo', 'certo', 'errado']:
+                    # REGRA GATILHO: Último errado, anteriores certos
+                    if res[-1] == 'errado' and all(x == 'certo' for x in res[:-1]):
                         pre_valido = True
                         if ponteiro > 0 and get_status(nums[ponteiro - 1]) == 'certo':
                             pre_valido = False
                         
                         if pre_valido:
                             contador_gatilho += 1
-                            log_terminal(trio, 'ERRO', contagem=contador_gatilho)
-                            ponteiro += 3
+                            
+                            # --- LOG NO TERMINAL ---
+                            log_terminal(bloco, 'ERRO', contagem=contador_gatilho)
+                            
+                            # --- NOVO: LOG NO TELEGRAM ---
+                            enviar_telegram(f"🔍 *SCANNER:* `{bloco}`\n🚩 Erro acumulado: *{contador_gatilho}/{ALVO_MINIMO}*")
+                            
+                            ponteiro += TAMANHO_BLOCO
+                            
                             if contador_gatilho >= ALVO_MINIMO:
                                 em_operacao = True
                                 gale_atual = 0
-                                enviar_telegram(f"⚠️ *SINAL CONFIRMADO* ({ALVO_MINIMO} Erros)\n*FAÇA A ENTRADA AGORA!*")
+                                enviar_telegram(f"⚠️ *ENTRADA CONFIRMADA!*")
                         else:
                             ponteiro += 1
                     else:
                         ponteiro += 1
-                        log_terminal(trio, 'BUSCA')
+                        log_terminal(bloco, 'BUSCA')
                 
                 else:
-                    deu_green = (res == ['certo', 'certo', 'certo'])
-                    deu_red = (res == ['certo', 'certo', 'errado'])
+                    # LÓGICA DE RESULTADO
+                    deu_green = all(x == 'certo' for x in res)
+                    deu_red = res[-1] == 'errado' and all(x == 'certo' for x in res[:-1])
 
                     if deu_green:
                         placar['greens'] += 1
                         placar[f"gale{gale_atual}"] += 1
                         salvar_placar(placar)
-                        log_terminal(trio, 'ACERTO', em_operacao=True, resultado='GREEN', gale=gale_atual)
+                        log_terminal(bloco, 'ACERTO', em_operacao=True, resultado='GREEN', gale=gale_atual)
+                        
                         info_gale = f"Gale {gale_atual}" if gale_atual > 0 else "Direto"
-                        enviar_telegram(f"✅ *GREEN {info_gale.upper()}!*\nBloco: `{trio}`\n📊 Placar: {placar['greens']}G | {placar['reds']}R")
+                        enviar_telegram(f"✅ *GREEN {info_gale.upper()}!*\nBloco: `{bloco}`\n📊 Placar: {placar['greens']}G | {placar['reds']}R")
+                        
                         em_operacao = False
                         contador_gatilho = 0
-                        ponteiro += 3
+                        ponteiro += TAMANHO_BLOCO
                     elif deu_red:
                         if gale_atual < MAX_GALE:
                             gale_atual += 1
-                            # --- AVISO DE GALE NO TELEGRAM ---
-                            enviar_telegram(f"🔄 *BLOCO DE ERRO:* `{trio}`\n*INDICAÇÃO:* Partindo para o **GALE {gale_atual}**!")
-                            
-                            log_terminal(trio, 'ERRO', em_operacao=True, gale=gale_atual)
-                            ponteiro += 3
+                            enviar_telegram(f"🔄 *ERRO:* `{bloco}`\nPartindo para o **GALE {gale_atual}**!")
+                            log_terminal(bloco, 'ERRO', em_operacao=True, gale=gale_atual)
+                            ponteiro += TAMANHO_BLOCO
                         else:
                             placar['reds'] += 1
                             salvar_placar(placar)
-                            log_terminal(trio, 'ERRO', em_operacao=True, resultado='RED', gale=gale_atual)
-                            enviar_telegram(f"❌ *RED FINAL*\nBloco: `{trio}`\n📊 Placar: {placar['greens']}G | {placar['reds']}R")
+                            log_terminal(bloco, 'ERRO', em_operacao=True, resultado='RED', gale=gale_atual)
+                            enviar_telegram(f"❌ *RED FINAL*\nBloco: `{bloco}`\n📊 Placar: {placar['greens']}G | {placar['reds']}R")
                             em_operacao = False
                             contador_gatilho = 0
-                            ponteiro += 3
+                            ponteiro += TAMANHO_BLOCO
                     else:
                         ponteiro += 1
             time.sleep(1)
