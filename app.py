@@ -52,15 +52,7 @@ def main():
         st.slider('Sequências consecutivas para análise', min_value=2, max_value=5, key="sequencias_consecutivas")
         st.checkbox('Analisar sequências de "erros"', help="Verifica sequências consecutivas de números que *não* fazem parte da estratégia escolhida.", key="inverter_logica_sequencia")
         st.checkbox('Analisar quebra de sequência', help="Ex: Se a estratégia for 3 acertos, a quebra acontece em 2 acertos + 1 erro.", key="inverter_logica")
-        st.button('Limpar Números Sorteados', on_click=lambda: st.session_state.numeros_sorteados.clear())
 
-        st.markdown("---")
-        st.header("Avisador de Sinais")
-        st.selectbox('Jogada do Sinal:', list(JOGADAS.keys()), key="jogada_sinal")
-        st.slider('Sequências do Sinal', min_value=2, max_value=5, key="sinal_sequencias_consecutivas")
-        st.checkbox('Ativar Avisador de Sinais', help="Ativa os alertas de aposta.", key="ativar_sinal")
-        st.checkbox('Sinal: Sequência de "erros"', help="Alerta para sequências consecutivas de erros.", key="sinal_inverter_logica_sequencia")
-        st.checkbox('Sinal: Quebra de sequência', help="Alerta para a quebra de uma sequência de acertos.", key="sinal_inverter_logica")
     
     # --- 4.2. CORPO PRINCIPAL DA INTERFACE ---
     st.header("Análise em Tempo Real")
