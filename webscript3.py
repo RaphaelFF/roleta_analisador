@@ -22,17 +22,11 @@ def api():
         driver.switch_to.window(janela)
         driver.switch_to.default_content()
 
-        # Localização dos IFrames (Estrutura Playtech)
-        iframe_1 = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[1]/section/section[1]/div[2]/iframe')
-        driver.switch_to.frame(iframe_1)
+        # Entra no gameIframe (iframe principal com id='gameIframe')
+        iframe_game = driver.find_element(By.ID, 'gameIframe')
+        driver.switch_to.frame(iframe_game)
 
-        shadow = driver.find_element(By.XPATH, '/html/body/game-container')
-        shadow_root = driver.execute_script("return arguments[0].shadowRoot", shadow)
-
-        iframe_2 = shadow_root.find_element(By.CSS_SELECTOR, 'iframe')
-        driver.switch_to.frame(iframe_2)
-
-        # Captura a linha de histórico
+        # Captura a linha de histórico (classe base sem hash)
         resultado = driver.find_element(By.CLASS_NAME, 'roulette-history_line').text.split()
     except:
         pass
